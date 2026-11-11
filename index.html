@@ -1,0 +1,1567 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f5f3ed">
+  <meta name="description" content="Play Dagan et al.’s Sign Preservation with Reuse against the computer.">
+  <title>符号保留 · Signal Arcade</title>
+  <style>
+:root {
+  color-scheme: light;
+  --paper: #f7f6f2;
+  --surface: #fff;
+  --ink: #151515;
+  --rule: #bdbdbd;
+  --screen: #151515;
+  --white: #fff;
+  --sans: "Source Sans 3", "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --mono: "IBM Plex Mono", "Noto Sans Mono CJK SC", Consolas, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html { min-width: 260px; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 15px/1.55 var(--sans);
+}
+
+button, input, select { font: inherit; color: inherit; }
+button:not(:disabled), summary { cursor: pointer; }
+a { color: inherit; text-underline-offset: 3px; }
+
+:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
+h1, h2, p { margin: 0; }
+h2 { font-size: 1.12rem; line-height: 1.3; }
+
+.wrap {
+  width: min(1160px, calc(100% - 48px));
+  margin-inline: auto;
+}
+
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--rule);
+}
+
+.topbar-inner,
+.top-controls,
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topbar-inner {
+  min-height: 58px;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.brand {
+  min-width: 0;
+  text-decoration: none;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border: 1px solid var(--ink);
+  font: 700 1rem/1 var(--mono);
+}
+
+.brand-title {
+  font: 700 .78rem/1.25 var(--mono);
+  letter-spacing: .035em;
+}
+
+.top-controls {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.language-picker {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+}
+
+.language-picker button {
+  min-width: 35px;
+  min-height: 33px;
+  padding: 3px 7px;
+  background: var(--surface);
+  border: 0;
+  font-size: .78rem;
+}
+
+.language-picker button + button { border-left: 1px solid var(--rule); }
+
+.language-picker button[aria-pressed="true"] {
+  background: #e8e8e8;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.language-picker button:hover { background: #e8e8e8; }
+
+main.wrap { padding-block: 25px 40px; }
+
+.intro { margin-bottom: 18px; }
+
+.intro h1 {
+  font-size: clamp(1.85rem, 4.4vw, 3.05rem);
+  font-weight: 850;
+  letter-spacing: -.035em;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.intro-copy {
+  max-width: 75ch;
+  margin-top: 7px;
+  font-size: .94rem;
+}
+
+.play-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 310px);
+  align-items: start;
+  gap: 15px;
+}
+
+.cabinet {
+  min-width: 0;
+  padding: 10px;
+  color: var(--white);
+  background: #262626;
+  border: 1px solid #151515;
+  border-radius: 5px;
+}
+
+.cabinet-top,
+.console-controls,
+.sign-controls,
+.erase-controls,
+.finish-controls,
+.record-toolbar,
+.replay-heading,
+.replay-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cabinet-top {
+  justify-content: space-between;
+  min-height: 30px;
+  padding: 0 3px 7px;
+  font: 700 .78rem/1.25 var(--mono);
+}
+
+.lamp-status {
+  font-size: .74rem;
+  text-align: right;
+}
+
+.screen,
+.replay-dialog { container-type: inline-size; container-name: board-area; }
+
+.screen {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #454545;
+  border-radius: 3px;
+  color: var(--white);
+  background: var(--screen);
+}
+
+.hud {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 11px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid #555;
+}
+
+.stat { min-width: 0; }
+.stat-name, .stat-value { display: block; }
+
+.stat-name {
+  font-size: .73rem;
+  line-height: 1.3;
+}
+
+.stat-value {
+  margin-top: 2px;
+  font: 700 clamp(.95rem, 2vw, 1.2rem)/1.2 var(--mono);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.stat-total { font-size: .76em; }
+
+.board {
+  --available-cols: 12;
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 7), minmax(0, 1fr));
+  grid-template-columns: repeat(min(var(--cols, 7), var(--available-cols)), minmax(0, 1fr));
+  align-content: start;
+  width: 100%;
+  max-height: min(380px, 48svh);
+  gap: 6px;
+  padding: 2px 1px;
+  overflow: auto;
+  scrollbar-color: #bdbdbd #262626;
+}
+
+@container board-area (width < 615px) { .board { --available-cols: 10; } }
+@container board-area (width < 515px) { .board { --available-cols: 8; } }
+@container board-area (width < 415px) { .board { --available-cols: 7; } }
+@container board-area (width < 365px) { .board { --available-cols: 6; } }
+@container board-area (width < 315px) { .board { --available-cols: 5; } }
+@container board-area (width < 265px) { .board { --available-cols: 4; } }
+@container board-area (width < 215px) { .board { --available-cols: 3; } }
+
+.cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 62px;
+  overflow: hidden;
+  padding: 15px 2px 14px;
+  border: 1px solid #777;
+  border-radius: 2px;
+  color: var(--white);
+  background: #292929;
+}
+
+.cell-number,
+.cell-hint,
+.cell-sign {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.cell-number {
+  position: absolute;
+  top: 4px;
+  left: 5px;
+  font-size: .67rem;
+  line-height: 1.1;
+}
+
+.cell-sign {
+  font-size: clamp(1.45rem, 4vw, 2.4rem);
+  font-weight: 700;
+  line-height: .8;
+}
+
+.cell-hint {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  left: 3px;
+  font-size: .58rem;
+  line-height: 1.15;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.cell.is-empty {
+  background: #1b1b1b;
+  border-style: dashed;
+}
+
+.cell.is-empty .cell-sign { font-size: 1.45rem; }
+.cell.is-erasable { border-style: dotted; border-color: #ddd; }
+.cell.is-reused, .cell.is-last { border-color: #ddd; }
+
+.cell.is-picked,
+.cell.will-erase,
+.cell[aria-pressed="true"] {
+  background: #414141;
+  border: 2px solid #fff;
+}
+
+.cell.will-erase {
+  background: repeating-linear-gradient(135deg, #383838 0 5px, #272727 5px 10px);
+}
+
+.cell.is-playable:not(:disabled):hover,
+.cell.is-erasable:not(:disabled):hover {
+  background: #3e3e3e;
+  border-color: #fff;
+}
+
+.cell:disabled { opacity: 1; }
+.cell:focus-visible { outline-offset: -3px; }
+
+.console-message {
+  margin-top: 9px;
+  font-size: .86rem;
+  line-height: 1.4;
+}
+
+.console-controls {
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.console-controls:not(:has(> :not([hidden]))) { display: none; }
+.sign-controls, .erase-controls, .finish-controls { flex-wrap: wrap; }
+
+.btn,
+.console-controls button,
+.replay-bar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4em;
+  min-height: 35px;
+  padding: 5px 10px;
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 700 .83rem/1.35 var(--sans);
+  text-align: center;
+  text-decoration: none;
+}
+
+.btn:not(:disabled):hover { background: #e9e9e9; }
+
+.btn-primary {
+  min-height: 39px;
+  border-width: 2px;
+  font-weight: 800;
+}
+
+.btn-quiet { border-color: var(--rule); }
+
+.console-controls .btn,
+.console-controls button {
+  color: var(--white);
+  border-color: #aaa;
+  background: #262626;
+}
+
+.console-controls .btn:not(:disabled):hover,
+.console-controls button:not(:disabled):hover { background: #3e3e3e; }
+
+button:disabled { cursor: default; }
+.btn:disabled, .replay-bar button:disabled { opacity: .55; }
+
+.panel {
+  min-width: 0;
+  padding: 13px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+}
+
+.setup h2 { margin-bottom: 9px; }
+
+.role-picker,
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 11px;
+}
+
+.role-button {
+  min-width: 0;
+  min-height: 61px;
+  padding: 6px 7px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  text-align: left;
+}
+
+.role-button:hover { background: #f1f1f1; }
+
+.role-button[aria-pressed="true"] {
+  background: #efefef;
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+.role-name {
+  display: block;
+  font-size: .84rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.role-description {
+  display: block;
+  margin-top: 3px;
+  font-size: .73rem;
+  line-height: 1.3;
+}
+
+.settings-grid label {
+  min-width: 0;
+  font-size: .79rem;
+  font-weight: 700;
+}
+
+.settings-grid :is(select, input) {
+  width: 100%;
+  margin-top: 3px;
+}
+
+select, input[type="number"] {
+  min-width: 0;
+  min-height: 36px;
+  padding: 5px 7px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  font-size: .84rem;
+}
+
+.setup > .btn-primary { width: 100%; }
+
+.storage-note, .record-summary {
+  margin-top: 9px;
+  font-size: .77rem;
+  line-height: 1.45;
+}
+
+.result-strip {
+  margin-top: 9px;
+  padding: 6px 8px;
+  background: #f1f1f1;
+  border-left: 2px solid var(--ink);
+  font-size: .81rem;
+  font-weight: 700;
+}
+
+.opening-score.panel {
+  display: block;
+  margin-top: 15px;
+  padding: 10px 13px;
+  font-size: .9rem;
+}
+
+.opening-score-value {
+  margin-inline-start: .25em;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.records.panel {
+  margin-top: 15px;
+  padding: 0;
+}
+
+.records summary { padding: 11px 13px; }
+.records summary h2 { display: inline; font-size: .96rem; }
+.records summary:focus-visible { outline-offset: -3px; }
+
+.record-toolbar {
+  flex-wrap: wrap;
+  margin: 0 13px 6px;
+}
+
+.match-select { flex: 1 1 150px; max-width: 100%; }
+.record-summary { margin: 0 13px 7px; }
+
+.turn-log {
+  min-height: 38px;
+  max-height: 215px;
+  margin: 0 13px 13px;
+  padding: 2px 5px;
+  overflow: auto;
+  background: #f3f3f3;
+  border: 1px solid var(--rule);
+  list-style: none;
+}
+
+.log-item + .log-item { border-top: 1px solid #d2d2d2; }
+
+.log-button {
+  display: grid;
+  grid-template-columns: 1.8rem minmax(0, 1fr) 1.1rem;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 34px;
+  padding: 5px;
+  background: transparent;
+  border: 0;
+  font-size: .82rem;
+  text-align: left;
+}
+
+.log-button:hover { background: #e5e5e5; }
+.log-button:focus-visible { outline-offset: -2px; }
+.log-round, .log-arrow { font-weight: 800; text-align: center; }
+.log-detail { overflow-wrap: anywhere; }
+.log-empty { padding: 6px; font-size: .81rem; }
+
+.rules-dialog,
+.replay-dialog {
+  width: min(690px, calc(100% - 30px));
+  max-height: calc(100% - 30px);
+  margin: auto;
+  padding: 15px;
+  overflow: auto;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+}
+
+.rules-dialog::backdrop, .replay-dialog::backdrop { background: #0009; }
+.replay-heading { justify-content: space-between; }
+.rules-list { margin: 12px 0; padding-left: 1.6em; }
+.rule-item + .rule-item { margin-top: 10px; }
+.rule-item p { margin-top: 3px; }
+.paper-link { font-size: .83rem; }
+
+.replay-bar { margin-top: 10px; }
+.replay-bar button { min-width: 36px; }
+#replay-counter { min-width: 8em; text-align: center; font-size: .82rem; }
+#replay-description { margin: 8px 0; font-size: .88rem; }
+
+.replay-board {
+  padding: 6px;
+  color: var(--white);
+  background: var(--screen);
+  border-radius: 3px;
+}
+
+@media (max-width: 740px) {
+  .wrap { width: calc(100% - 26px); }
+  main.wrap { padding-block: 18px 24px; }
+  .intro { margin-bottom: 13px; }
+  .intro-copy { font-size: .86rem; }
+  .play-layout { grid-template-columns: minmax(0, 1fr); gap: 11px; }
+  .cabinet { padding: 7px; }
+  .screen { padding: 9px; }
+  .board { max-height: min(320px, 40svh); }
+  .cell { min-height: 58px; }
+}
+
+@media (max-width: 390px) {
+  .wrap { width: calc(100% - 20px); }
+  .topbar-inner { min-height: 52px; gap: 7px; }
+  .brand, .top-controls { gap: 6px; }
+  .brand-title { font-size: .67rem; }
+  .brand-mark { width: 24px; height: 24px; flex-basis: 24px; }
+  .cell { min-height: 54px; }
+  .cell-hint { font-size: .53rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; }
+}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a href="#top" class="brand"><span class="brand-mark" aria-hidden="true">±</span><span class="brand-title">SIGNAL ARCADE</span></a>
+      <div class="top-controls">
+        <div class="language-picker" role="group" data-i18n-aria="language">
+          <button type="button" data-language="zh" lang="zh-CN" aria-pressed="true">中文</button>
+          <button type="button" data-language="en" lang="en" aria-pressed="false">EN</button>
+        </div>
+        <button type="button" class="btn btn-quiet" id="open-rules" data-i18n="rules">规则</button>
+      </div>
+    </div>
+  </header>
+  <main class="wrap" id="top">
+    <section class="intro" aria-labelledby="page-title">
+      <h1 id="page-title" data-i18n="title">符号保留</h1>
+      <p class="intro-copy" data-i18n="subtitle">清空的格子可以再次选择。</p>
+    </section>
+
+    <div class="play-layout" id="play">
+      <section class="cabinet" data-i18n-aria="board">
+        <div class="cabinet-top"><span class="screen-caption" data-i18n="board">棋盘</span><span class="lamp-status" id="lamp-status"></span></div>
+        <div class="screen">
+          <div class="hud" data-i18n-aria="matchStatus">
+            <div class="stat"><span class="stat-name" data-i18n="rounds">回合</span><span class="stat-value" id="round-stat"></span></div>
+            <div class="stat"><span class="stat-name" data-i18n="remainingSigns">留存符号</span><span class="stat-value" id="score-stat"></span></div>
+            <div class="stat"><span class="stat-name" data-i18n="reuses">复用</span><span class="stat-value" id="reuse-stat"></span></div>
+          </div>
+          <div class="board" id="board" data-i18n-aria="orderedBoard"></div>
+          <p class="console-message" id="console-message" role="status" aria-live="polite"></p>
+          <div class="console-controls">
+            <div class="sign-controls" id="sign-controls" hidden data-i18n-aria="placeSign">
+              <button type="button" class="btn sign-button plus-button" id="place-plus"><span aria-hidden="true">+</span> <span data-i18n="placePlus">落正号</span></button>
+              <button type="button" class="btn sign-button minus-button" id="place-minus"><span aria-hidden="true">−</span> <span data-i18n="placeMinus">落负号</span></button>
+            </div>
+            <div class="erase-controls" id="erase-controls" hidden>
+              <button type="button" class="btn btn-quiet" id="erase-all" data-i18n="eraseAll">全擦</button>
+              <button type="button" class="btn btn-quiet" id="erase-none" data-i18n="keepAll">全保留</button>
+            </div>
+            <div class="finish-controls" id="finish-controls" hidden><button type="button" class="btn btn-quiet" id="end-match" data-i18n="stopEarly">提前结算</button></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="setup panel" aria-labelledby="setup-title">
+        <h2 id="setup-title" data-i18n="setup">对局设置</h2>
+        <form id="settings-form" novalidate>
+          <div class="role-picker" role="group" data-i18n-aria="chooseRole">
+            <button type="button" class="role-button" data-role="pointer" aria-pressed="true"><span class="role-name">Pointer</span><span class="role-description" data-i18n="pointerHelp">选格，尽量多留符号</span></button>
+            <button type="button" class="role-button" data-role="labeler" aria-pressed="false"><span class="role-name">Labeler</span><span class="role-description" data-i18n="labelerHelp">落子，尽量少留符号</span></button>
+          </div>
+          <div class="settings-grid">
+            <label><span data-i18n="cells">格子数</span><input id="size" type="number" value="7" min="1" max="100" step="1" inputmode="numeric" required aria-describedby="size-error"></label>
+            <label><span data-i18n="roundLimit">回合上限</span><select id="limit"><option value="4">4</option><option value="8">8</option><option value="12" selected>12</option><option value="16">16</option><option value="24">24</option><option value="32">32</option></select></label>
+          </div>
+          <p id="size-error" class="input-error" role="alert" hidden data-i18n="sizeError">请输入 1 到 100 之间的整数。</p>
+          <button type="submit" class="btn btn-primary" id="start-match">开始对局</button>
+        </form>
+        <p class="storage-note" id="storage-note" hidden></p>
+        <p class="result-strip" id="result-strip" hidden></p>
+      </section>
+    </div>
+
+    <output class="opening-score panel" id="opening-score" for="size limit" hidden></output>
+
+    <details class="records panel" id="records">
+      <summary><h2 id="records-title" data-i18n="records">对局记录</h2></summary>
+      <div class="record-toolbar">
+        <select class="match-select" id="match-select" data-i18n-aria="selectMatch" disabled><option data-i18n="noMatches">暂无对局</option></select>
+        <div class="record-actions"><button type="button" class="btn btn-quiet" id="export-match" data-i18n="export" disabled>导出</button></div>
+      </div>
+      <p class="record-summary" id="record-summary"></p>
+      <ol class="turn-log" id="turn-log" data-i18n-aria="turnLog"></ol>
+    </details>
+  </main>
+
+  <dialog id="rules" class="rules-dialog" aria-labelledby="rules-title">
+    <div class="replay-heading"><h2 id="rules-title" data-i18n="rules">规则</h2><button type="button" class="btn btn-quiet" id="close-rules" data-i18n="close">关闭</button></div>
+    <ol class="rules-list">
+      <li class="rule-item"><strong data-i18n="rule1Title">Pointer 选格</strong><p data-i18n="rule1Body">选一个空格。已被清空的格子可以再次选中。</p></li>
+      <li class="rule-item"><strong data-i18n="rule2Title">Labeler 擦除并落子</strong><p data-i18n="rule2Body">可以擦除选中格左边的 − 和右边的 +，也可以保留它们。再在选中格放 + 或 −。左右按格子编号判断。</p></li>
+      <li class="rule-item"><strong data-i18n="rule3Title">计算留存符号</strong><p data-i18n="rule3Body">达到回合上限、棋盘填满，或 Pointer 提前结算时结束。Pointer 希望留存越多越好，Labeler 希望越少越好。</p></li>
+    </ol>
+    <a class="paper-link" href="https://arxiv.org/html/2406.13668v4#S2.SS2" target="_blank" rel="noopener noreferrer" data-i18n="paper">论文规则 ↗</a>
+  </dialog>
+  <dialog id="replay" class="replay-dialog" aria-labelledby="replay-title">
+    <div class="replay-heading"><h2 id="replay-title" data-i18n="replay">回合复盘</h2><button type="button" class="btn btn-quiet" id="close-replay" data-i18n="close">关闭</button></div>
+    <div class="replay-bar"><button type="button" class="btn btn-quiet" id="previous-turn" data-i18n-aria="prevTurn">←</button><span id="replay-counter"></span><button type="button" class="btn btn-quiet" id="next-turn" data-i18n-aria="nextTurn">→</button></div>
+    <p id="replay-description"></p>
+    <div class="board replay-board" id="replay-board" data-i18n-aria="replayBoard"></div>
+  </dialog>
+  <noscript><p class="wrap">请启用 JavaScript。 Please enable JavaScript to play.</p></noscript>
+  <script>
+(function () {
+  "use strict";
+
+  const MAX_BOARD_SIZE = 100;
+  const MAX_ROUNDS = 32;
+  const EXACT_BOARD_LIMIT = 10;
+  const LARGE_BOARD_DEPTH = 2;
+
+  // Each list gives the smallest board attaining one sign, then two, etc.
+  // Entries are exact minimax results on the indicated range of board sizes.
+  const OPENING_FRONTIERS = [
+    { rounds: 4, through: 100, sizes: [1, 3, 5, 15] },
+    { rounds: 8, through: 100, sizes: [1, 3, 5, 7, 12, 23, 55] },
+    { rounds: 12, through: 100, sizes: [1, 3, 5, 7, 9, 15, 22, 35, 63] },
+    { rounds: 16, through: 100, sizes: [1, 3, 5, 7, 9, 11, 17, 24, 35, 52, 87] },
+    { rounds: 24, through: 30, sizes: [1, 3, 5, 7, 9, 11, 13, 17, 23, 29] },
+    { rounds: 32, through: 25, sizes: [1, 3, 5, 7, 9, 11, 13, 15, 19, 24] },
+  ];
+
+  const OPENING_GUARANTEES = [
+    { size: 25, rounds: 21, count: 9 },
+    { size: 49, rounds: 23, count: 10 },
+    { size: 25, rounds: 29, count: 10 },
+  ];
+
+  function openingScore(size, rounds) {
+    let lower = Math.min(rounds, Math.floor(Math.log2(size + 1)));
+
+    // Playing the middle cell first protects one sign on either response.
+    // The remaining game can be played wholly on the compatible side.
+    let width = size;
+    for (let protectedSigns = 0; width > 0 && protectedSigns < rounds; protectedSigns += 1) {
+      for (const frontier of OPENING_FRONTIERS) {
+        if (frontier.rounds > rounds - protectedSigns) break;
+        const count = frontier.sizes.filter(minimum => minimum <= width).length;
+        lower = Math.max(lower, count + protectedSigns);
+      }
+      for (const guarantee of OPENING_GUARANTEES) {
+        if (guarantee.rounds <= rounds - protectedSigns && guarantee.size <= width) {
+          lower = Math.max(lower, guarantee.count + protectedSigns);
+        }
+      }
+      width = Math.floor((width - 1) / 2);
+    }
+
+    // An adjacent pair holds at most one sign if the labeler marks inward.
+    let upper = Math.min(rounds, Math.ceil(size / 2));
+    const prefixBounds = Array.from({ length: rounds + 1 }, (_, depth) => depth);
+    for (const frontier of OPENING_FRONTIERS) {
+      const solvedSize = Math.min(size, frontier.through);
+      const count = frontier.sizes.filter(minimum => minimum <= solvedSize).length;
+      // In a virtual larger game the extra cells can be labeled as pairs.
+      // Simulating its remaining cells loses at most one sign per extra pair.
+      const widthBound = count + Math.ceil((size - solvedSize) / 2);
+      for (let depth = 1; depth <= rounds; depth += 1) {
+        prefixBounds[depth] = Math.min(prefixBounds[depth], widthBound + Math.max(0, depth - frontier.rounds));
+      }
+    }
+    // At a round boundary, a labeler can replay a fresh-game strategy.
+    // At most the existing signs survive in addition to its fresh-game count.
+    for (let depth = 2; depth <= rounds; depth += 1) {
+      for (let prefix = 1; prefix <= Math.floor(depth / 2); prefix += 1) {
+        prefixBounds[depth] = Math.min(prefixBounds[depth], prefixBounds[prefix] + prefixBounds[depth - prefix]);
+      }
+    }
+    upper = Math.min(upper, prefixBounds[rounds]);
+    return { lower, upper };
+  }
+
+  function validateBoard(board) {
+    if (!Array.isArray(board) || board.length === 0) {
+      throw new TypeError("The board must be a nonempty array.");
+    }
+    for (const cell of board) {
+      if (cell !== 0 && cell !== -1 && cell !== 1) {
+        throw new TypeError("Board cells must be 0, -1, or 1.");
+      }
+    }
+  }
+
+  function validateIndex(board, index) {
+    if (!Number.isInteger(index) || index < 0 || index >= board.length) {
+      throw new RangeError("The pointer must select a cell on the board.");
+    }
+    if (board[index] !== 0) {
+      throw new RangeError("The pointer must select an empty cell.");
+    }
+  }
+
+  function getErasable(board, index) {
+    validateBoard(board);
+    validateIndex(board, index);
+    const erasable = [];
+    for (let cell = 0; cell < board.length; cell += 1) {
+      if ((cell < index && board[cell] === -1) ||
+          (cell > index && board[cell] === 1)) {
+        erasable.push(cell);
+      }
+    }
+    return erasable;
+  }
+
+  function applyMove(board, index, sign, erased) {
+    const legalErasures = new Set(getErasable(board, index));
+    if (sign !== -1 && sign !== 1) {
+      throw new TypeError("The labeler must place -1 or 1.");
+    }
+    if (!Array.isArray(erased)) {
+      throw new TypeError("Erasures must be an array of cell indices.");
+    }
+
+    const next = board.slice();
+    for (const cell of erased) {
+      if (!legalErasures.delete(cell)) {
+        throw new RangeError("Each erased cell must be eligible and listed once.");
+      }
+      next[cell] = 0;
+    }
+    next[index] = sign;
+    return next;
+  }
+
+  function createBoardSolver(size) {
+    const cellWeights = Array.from({ length: size }, (_, index) => 3 ** index);
+    const stateCount = 3 ** size;
+    const plusWeight = new Uint16Array(stateCount);
+    const occupiedCount = new Uint8Array(stateCount);
+    const clearedStates = new Uint16Array(stateCount * size);
+    const valuesByDepth = [];
+
+    // Encode the board as a base-three integer, with digit 2 for a minus sign.
+    for (let state = 1; state < stateCount; state += 1) {
+      const rest = Math.floor(state / 3);
+      const digit = state % 3;
+      plusWeight[state] = 3 * plusWeight[rest] + Number(digit === 1);
+      occupiedCount[state] = occupiedCount[rest] + Number(digit !== 0);
+    }
+
+    // Filling extra cells cannot reduce the pointer's value with early
+    // stopping. For a fixed placement sign, the labeler can erase every
+    // eligible cell and obtain a subboard of every other legal result.
+    for (let state = 0; state < stateCount; state += 1) {
+      let digits = state;
+      let minusesOnLeft = 0;
+      let plusesOnRight = plusWeight[state];
+      for (let index = 0; index < size; index += 1) {
+        const digit = digits % 3;
+        digits = Math.floor(digits / 3);
+        if (digit === 1) {
+          plusesOnRight -= cellWeights[index];
+        } else if (digit === 2) {
+          minusesOnLeft += 2 * cellWeights[index];
+        } else {
+          // Reserve zero for occupied cells.
+          clearedStates[state * size + index] = state - minusesOnLeft - plusesOnRight + 1;
+        }
+      }
+    }
+
+    function encode(board) {
+      let state = 0;
+      for (let index = 0; index < size; index += 1) {
+        const digit = board[index] === -1 ? 2 : board[index];
+        state += digit * cellWeights[index];
+      }
+      return state;
+    }
+
+    function labelValue(cleared, index, depth, cutoff, choice) {
+      const minusValue = pointerValue(cleared + 2 * cellWeights[index], depth - 1);
+      // The pointer can stop after the placement, so this count bounds both
+      // placement signs from below.
+      const lowerBound = occupiedCount[cleared] + 1;
+      if (minusValue <= Math.max(cutoff, lowerBound)) {
+        return minusValue;
+      }
+      const plusValue = pointerValue(cleared + cellWeights[index], depth - 1);
+      if (plusValue < minusValue && choice) {
+        choice.sign = 1;
+      }
+      return Math.min(minusValue, plusValue);
+    }
+
+    function pointerValue(state, depth, choice) {
+      const count = occupiedCount[state];
+      if (depth === 0 || count === size) {
+        return count;
+      }
+
+      let values = valuesByDepth[depth];
+      if (!values) {
+        values = new Uint8Array(stateCount);
+        valuesByDepth[depth] = values;
+      }
+      if (!choice && values[state] !== 0) {
+        return values[state] - 1;
+      }
+
+      let best = count;
+      const upperBound = Math.min(size, count + depth);
+      for (let index = 0; index < size; index += 1) {
+        const cleared = clearedStates[state * size + index] - 1;
+        if (cleared < 0) {
+          continue;
+        }
+        // If stopping is still selected, distinguish a tie from a loss.
+        const canReplaceStop = choice && choice.index === null;
+        const cutoff = canReplaceStop ? best - 1 : best;
+        const value = labelValue(cleared, index, depth, cutoff);
+        if (value > best || (canReplaceStop && value === best)) {
+          best = value;
+          if (choice) {
+            choice.index = index;
+          }
+        }
+        if (best === upperBound) {
+          break;
+        }
+      }
+      values[state] = best + 1;
+      return best;
+    }
+
+    return {
+      pointer(board, depth) {
+        const choice = { index: null };
+        const value = pointerValue(encode(board), depth, choice);
+        return { index: choice.index, value };
+      },
+      labeler(board, index, depth) {
+        const choice = { sign: -1 };
+        const cleared = clearedStates[encode(board) * size + index] - 1;
+        const value = labelValue(cleared, index, depth, -1, choice);
+        return { sign: choice.sign, erased: getErasable(board, index), value };
+      },
+    };
+  }
+
+  function countOccupied(board) {
+    let occupied = 0;
+    for (const cell of board) {
+      if (cell !== 0) {
+        occupied += 1;
+      }
+    }
+    return occupied;
+  }
+
+  function largeBoardLabeler(board, index, depth, occupied) {
+    const erased = [];
+    let lastPlusOnLeft = -1;
+    let firstMinusOnRight = board.length;
+    for (let cell = 0; cell < board.length; cell += 1) {
+      if (cell < index) {
+        if (board[cell] === -1) {
+          erased.push(cell);
+        } else if (board[cell] === 1) {
+          lastPlusOnLeft = cell;
+        }
+      } else if (cell > index) {
+        if (board[cell] === 1) {
+          erased.push(cell);
+        } else if (board[cell] === -1 && firstMinusOnRight === board.length) {
+          firstMinusOnRight = cell;
+        }
+      }
+    }
+
+    // An empty cell allows a guaranteed gain next round only between the rightmost plus
+    // and the leftmost minus. The placement sign determines this gap.
+    const minusGap = index - lastPlusOnLeft - 1;
+    const plusGap = firstMinusOnRight - index - 1;
+    const sign = minusGap <= plusGap ? -1 : 1;
+    const nextGain = depth > 1 && Math.min(minusGap, plusGap) > 0 ? 1 : 0;
+    return { sign, erased, value: occupied + 1 - erased.length + nextGain };
+  }
+
+  const largeBoardSolver = {
+    pointer(board, depth) {
+      const occupied = countOccupied(board);
+      let index = null;
+      let value = occupied;
+      let centerDistance = Infinity;
+      if (depth === 0) {
+        return { index, value };
+      }
+
+      for (let cell = 0; cell < board.length; cell += 1) {
+        if (board[cell] !== 0) {
+          continue;
+        }
+        const candidate = largeBoardLabeler(board, cell, depth, occupied);
+        const distance = Math.abs(2 * cell - (board.length - 1));
+        if (candidate.value > value ||
+            (candidate.value === value && distance < centerDistance)) {
+          index = cell;
+          value = candidate.value;
+          centerDistance = distance;
+        }
+      }
+      return { index, value };
+    },
+    labeler(board, index, depth) {
+      return largeBoardLabeler(board, index, depth, countOccupied(board));
+    },
+  };
+
+  function createSolver() {
+    const solvers = new Map();
+
+    function getSolver(board, remaining) {
+      validateBoard(board);
+      if (board.length > MAX_BOARD_SIZE) {
+        throw new RangeError(`The solver supports boards up to ${MAX_BOARD_SIZE} cells.`);
+      }
+      if (!Number.isInteger(remaining) || remaining < 0 || remaining > MAX_ROUNDS) {
+        throw new RangeError(`The round count must be an integer from 0 to ${MAX_ROUNDS}.`);
+      }
+      if (board.length > EXACT_BOARD_LIMIT) {
+        return { solver: largeBoardSolver, depth: Math.min(remaining, LARGE_BOARD_DEPTH) };
+      }
+      if (!solvers.has(board.length)) {
+        solvers.set(board.length, createBoardSolver(board.length));
+      }
+      return { solver: solvers.get(board.length), depth: remaining };
+    }
+
+    return {
+      pointer(board, remaining) {
+        const { solver, depth } = getSolver(board, remaining);
+        return solver.pointer(board, depth);
+      },
+      labeler(board, index, remaining) {
+        const { solver, depth } = getSolver(board, remaining);
+        validateIndex(board, index);
+        if (depth === 0) {
+          throw new RangeError("The labeler can only play while a round remains.");
+        }
+        return solver.labeler(board, index, depth);
+      },
+    };
+  }
+
+  const api = Object.freeze({ getErasable, applyMove, createSolver, openingScore });
+  globalThis.SPR = api;
+  if (typeof module === "object" && module.exports) {
+    module.exports = api;
+  }
+}());
+  </script>
+  <script>
+'use strict';
+
+const translations = {
+  title: ['符号保留', 'Sign Preservation'],
+  subtitle: ['清空的格子可以再次选择。', 'Clear a cell and it can be played again.'],
+  language: ['选择语言', 'Choose language'],
+  rules: ['规则', 'Rules'],
+  board: ['棋盘', 'Board'],
+  matchStatus: ['对局状态', 'Match status'],
+  rounds: ['回合', 'Rounds'],
+  remainingSigns: ['留存符号', 'Signs left'],
+  reuses: ['复用', 'Reuses'],
+  orderedBoard: ['按编号排列的棋盘', 'Game board in cell order'],
+  placeSign: ['落下符号', 'Place a sign'],
+  placePlus: ['落正号', 'Place plus'],
+  placeMinus: ['落负号', 'Place minus'],
+  eraseAll: ['全擦', 'Erase all'],
+  keepAll: ['全保留', 'Keep all'],
+  stopEarly: ['提前结算', 'End match'],
+  setup: ['对局设置', 'Match setup'],
+  newSetup: ['新局设置', 'New match'],
+  chooseRole: ['选择角色', 'Choose your role'],
+  pointerHelp: ['选格，尽量多留符号', 'Pick cells. Keep more signs.'],
+  labelerHelp: ['落子，尽量少留符号', 'Place signs. Keep fewer signs.'],
+  cells: ['格子数', 'Cells'],
+  roundLimit: ['回合上限', 'Round limit'],
+  openingScore: ['{size} 格 · {limit} 回合 · 最优留存数', '{size} cells · {limit} rounds · Optimal sign count'],
+  openingScoreRange: ['{size} 格 · {limit} 回合 · 最优留存数的已证范围', '{size} cells · {limit} rounds · Proven range for the optimal sign count'],
+  openingSigns: ['{count} 个', '{count}'],
+  openingSignsRange: ['{lower}–{upper} 个', '{lower}–{upper}'],
+  sizeError: ['请输入 1 到 100 之间的整数。', 'Enter a whole number from 1 to 100.'],
+  start: ['开始对局', 'Start match'],
+  newMatch: ['保存并开新局', 'Save and start new match'],
+  storageError: ['浏览器无法保存。可以导出对局记录。', 'Browser storage is unavailable. You can export the match.'],
+  records: ['对局记录', 'Match history'],
+  selectMatch: ['选择要查看的对局', 'Select a match'],
+  noMatches: ['暂无对局', 'No matches yet'],
+  export: ['导出', 'Export'],
+  noRecords: ['完成一回合后，可在这里查看记录。', 'Completed turns will appear here.'],
+  turnLog: ['回合记录', 'Turn log'],
+  close: ['关闭', 'Close'],
+  rule1Title: ['Pointer 选格', 'Pointer selects a cell'],
+  rule1Body: ['选一个空格。已被清空的格子可以再次选中。', 'Choose an empty cell. A cell becomes available again when its sign is erased.'],
+  rule2Title: ['Labeler 擦除并落子', 'Labeler erases and places a sign'],
+  rule2Body: ['可以擦除选中格左边的 − 和右边的 +，也可以保留它们。再在选中格放 + 或 −。左右按格子编号判断。', 'Erase any subset of the − signs to the left and the + signs to the right. Then place + or − in the selected cell. Use cell numbers to determine left and right.'],
+  rule3Title: ['计算留存符号', 'Count the surviving signs'],
+  rule3Body: ['达到回合上限、棋盘填满，或 Pointer 提前结算时结束。Pointer 希望留存越多越好，Labeler 希望越少越好。', 'The match ends when the round limit is reached, the board fills, or Pointer stops. Pointer maximizes the final count and Labeler minimizes it.'],
+  paper: ['论文规则 ↗', 'Rules in the paper ↗'],
+  replay: ['回合复盘', 'Replay'],
+  prevTurn: ['上一回合', 'Previous turn'],
+  nextTurn: ['下一回合', 'Next turn'],
+  replayBoard: ['回合结束后的棋盘', 'Board after this turn'],
+  replayCount: ['第 {turn} / {total} 回合', 'Turn {turn} / {total}'],
+  waiting: ['等待开局', 'Ready'],
+  chooseStart: ['选择角色后开始对局。', 'Choose a role and start a match.'],
+  cpuTurn: ['电脑回合', 'Computer turn'],
+  cpuLabeling: ['你选了第 {cell} 格。电脑正在落子…', 'You picked cell {cell}. The computer is placing a sign…'],
+  cpuPointing: ['电脑正在选格…', 'The computer is picking a cell…'],
+  yourPick: ['你来选格', 'Your move'],
+  pickEmpty: ['选一个空格。清空的格子可以复用。', 'Pick any empty cell, including cells cleared earlier.'],
+  yourLabel: ['你来落子', 'Your sign'],
+  labelWithErase: ['电脑选了第 {cell} 格。点击高亮格切换擦除，再落下符号。', 'The computer picked cell {cell}. Toggle highlighted signs to erase or keep them, then place a sign.'],
+  labelNoErase: ['电脑选了第 {cell} 格。请选择正号或负号。', 'The computer picked cell {cell}. Place a plus or minus.'],
+  done: ['对局结束', 'Match finished'],
+  finishedMessage: ['{reason}。本局留存 {count} 个符号。', '{reason}. Final sign count: {count}.'],
+  currentRole: ['你是 {role}', 'You are {role}'],
+  finalScore: ['本局留存 {count} 个符号', 'Final sign count: {count}'],
+  reasonLimit: ['达到回合上限', 'Round limit reached'],
+  reasonFull: ['棋盘已填满', 'The board is full'],
+  reasonCpuStop: ['电脑提前结算', 'Computer stopped early'],
+  reasonYouStop: ['你提前结算', 'You stopped early'],
+  reasonArchived: ['开了新局', 'A new match was started'],
+  playing: ['进行中', 'In progress'],
+  finished: ['已结束', 'Finished'],
+  archived: ['已中止', 'Archived'],
+  pending: ['已选第 {cell} 格，等待落子', 'Cell {cell} selected, awaiting a sign'],
+  summary: ['{size} 格 · {turns}/{limit} 回合 · 留存 {count}', '{size} cells · {turns}/{limit} turns · {count} signs left'],
+  emptyLog: ['完成第一回合后即可复盘。', 'Finish the first turn to replay it.'],
+  picked: ['已选中', 'Selected'],
+  willErase: ['将擦除', 'Erase'],
+  willKeep: ['保留', 'Keep'],
+  reusable: ['可复用', 'Reusable'],
+  plus: ['正号', 'plus'],
+  minus: ['负号', 'minus'],
+  empty: ['空', 'empty'],
+  cellLabel: ['第 {cell} 格，{status}{hint}', 'Cell {cell}, {status}{hint}'],
+  none: ['无', 'none'],
+  you: ['你', 'You'],
+  computer: ['电脑', 'Computer'],
+  reuseMark: ['（复用）', ' (reused)'],
+  move: ['{pointer}选第 {cell} 格{reused}，{labeler}落 {sign}。擦除 {erased}。', '{pointer} picked cell {cell}{reused}. {labeler} placed {sign}. Erased: {erased}.'],
+};
+  </script>
+  <script>
+'use strict';
+
+const { getErasable, applyMove, createSolver, openingScore } = globalThis.SPR;
+const solver = createSolver();
+const storageKey = 'signal-arcade-spr-v1';
+const element = id => document.getElementById(id);
+const roles = { pointer: 'Pointer', labeler: 'Labeler' };
+const glyph = sign => sign === 1 ? '+' : '−';
+const pad = number => String(number).padStart(2, '0');
+const survivors = board => board.filter(Boolean).length;
+const boardEl = element('board');
+const matchSelect = element('match-select');
+const replayDialog = element('replay');
+const rulesDialog = element('rules');
+const sizeInput = element('size');
+const limitSelect = element('limit');
+const openingScoreOutput = element('opening-score');
+const defaults = { role: 'pointer', size: 7, limit: 12, lang: 'zh' };
+const loaded = readStorage();
+const settings = { ...defaults, ...loaded.settings };
+const games = loaded.games ?? [];
+let activeId = loaded.activeId ?? null;
+let displayedId = activeId;
+let replayId = null;
+let replayIndex = 0;
+let cpuTimer;
+let storageAvailable = true;
+
+function t(key, values = {}) {
+  const message = translations[key]?.[settings.lang === 'en' ? 1 : 0] ?? key;
+  return message.replace(/\{(\w+)\}/g, (_, name) => values[name] ?? '');
+}
+
+function applyLanguage() {
+  document.documentElement.lang = settings.lang === 'en' ? 'en' : 'zh-CN';
+  document.title = `${t('title')} · Signal Arcade`;
+  document.querySelectorAll('[data-i18n]').forEach(node => {
+    node.textContent = t(node.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-aria]').forEach(node => {
+    node.setAttribute('aria-label', t(node.dataset.i18nAria));
+  });
+  document.querySelectorAll('[data-language]').forEach(button => {
+    button.setAttribute('aria-pressed', String(button.dataset.language === settings.lang));
+  });
+  if (replayDialog.open) renderReplay();
+}
+
+function validateSize() {
+  const size = sizeInput.valueAsNumber;
+  const valid = Number.isInteger(size) && size >= 1 && size <= 100;
+  sizeInput.setAttribute('aria-invalid', String(!valid));
+  element('size-error').hidden = valid;
+  return valid;
+}
+
+function renderOpeningScore() {
+  const valid = validateSize();
+  openingScoreOutput.hidden = !valid;
+  if (!valid) {
+    openingScoreOutput.replaceChildren();
+    return;
+  }
+  const size = sizeInput.valueAsNumber;
+  const limit = Number(limitSelect.value);
+  const { lower, upper } = openingScore(size, limit);
+  const exact = lower === upper;
+  const label = t(exact ? 'openingScore' : 'openingScoreRange', { size, limit });
+  const value = exact ? t('openingSigns', { count: lower }) : t('openingSignsRange', { lower, upper });
+  if (openingScoreOutput.textContent === `${label} ${value}`) return;
+  openingScoreOutput.replaceChildren(document.createTextNode(`${label} `), makeText('strong', 'opening-score-value', value));
+}
+
+function reasonText(reason) {
+  // Translate reasons stored by the earlier Chinese-only release as well.
+  const oldReasons = {
+    '达到回合上限': 'reasonLimit', '棋盘已填满': 'reasonFull',
+    '电脑提前结算': 'reasonCpuStop', '你提前结算': 'reasonYouStop', '开了新局': 'reasonArchived',
+  };
+  return t(oldReasons[reason] ?? reason);
+}
+
+function readStorage() {
+  try {
+    const data = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    if (data.version === 1 && Array.isArray(data.games)) return data;
+  } catch {
+    // A fresh session remains playable if storage is unavailable.
+  }
+  return {};
+}
+
+function save() {
+  try {
+    localStorage.setItem(storageKey, JSON.stringify({ version: 1, settings, games, activeId }));
+    storageAvailable = true;
+  } catch {
+    storageAvailable = false;
+  }
+}
+
+const byId = id => games.find(game => game.id === id);
+const active = () => byId(activeId);
+const isPlaying = game => game?.status === 'playing';
+const canPoint = game => isPlaying(game) && game.role === 'pointer' && !game.pending;
+const canLabel = game => isPlaying(game) && game.role === 'labeler' && Boolean(game.pending);
+const cpuTurn = game => isPlaying(game) && (game.pending ? game.role === 'pointer' : game.role === 'labeler');
+
+function startMatch(event) {
+  event.preventDefault();
+  if (!validateSize()) {
+    sizeInput.focus();
+    return;
+  }
+  settings.size = sizeInput.valueAsNumber;
+  clearTimeout(cpuTimer);
+  const previous = active();
+  if (isPlaying(previous)) {
+    previous.status = 'archived';
+    previous.reason = 'reasonArchived';
+    previous.finishedAt = new Date().toISOString();
+  }
+  const game = {
+    id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
+    role: settings.role,
+    size: settings.size,
+    limit: settings.limit,
+    startedAt: new Date().toISOString(),
+    status: 'playing',
+    board: Array(settings.size).fill(0),
+    moves: [],
+    pending: null,
+  };
+  games.unshift(game);
+  activeId = displayedId = game.id;
+  save();
+  render();
+  queueCpu();
+  if (game.role === 'pointer') boardEl.querySelector('.is-playable')?.focus({ preventScroll: true });
+}
+
+function point(index) {
+  const game = active();
+  if (!isPlaying(game) || game.pending || game.board[index] !== 0) return;
+  const eligible = getErasable(game.board, index);
+  game.pending = { index, eligible, erased: eligible.slice() };
+  save();
+  render();
+  queueCpu();
+  if (canLabel(game)) element('place-plus').focus({ preventScroll: true });
+}
+
+function place(sign, erased) {
+  const game = active();
+  if (!isPlaying(game) || !game.pending) return;
+  const { index, eligible } = game.pending;
+  const after = applyMove(game.board, index, sign, erased);
+  game.moves.push({
+    index,
+    sign,
+    eligible: eligible.map(i => ({ index: i, sign: game.board[i] })),
+    erased: erased.map(i => ({ index: i, sign: game.board[i] })),
+    reused: game.moves.some(move => move.index === index),
+    after,
+  });
+  game.board = after;
+  game.pending = null;
+  if (game.moves.length === game.limit) finish(game, 'reasonLimit');
+  else if (after.every(Boolean)) finish(game, 'reasonFull');
+  else {
+    save();
+    render();
+    queueCpu();
+  }
+}
+
+function finish(game, reason) {
+  clearTimeout(cpuTimer);
+  game.status = 'finished';
+  game.reason = reason;
+  game.finishedAt = new Date().toISOString();
+  save();
+  render();
+}
+
+function queueCpu() {
+  clearTimeout(cpuTimer);
+  const game = active();
+  if (!cpuTurn(game)) return;
+  cpuTimer = setTimeout(() => {
+    if (active() !== game || !cpuTurn(game)) return;
+    const remaining = game.limit - game.moves.length;
+    if (game.pending) {
+      const move = solver.labeler(game.board, game.pending.index, remaining);
+      place(move.sign, move.erased);
+    } else {
+      const move = solver.pointer(game.board, remaining);
+      if (move.index === null) finish(game, 'reasonCpuStop');
+      else point(move.index);
+    }
+  }, 360);
+}
+
+function toggleErase(index) {
+  const game = active();
+  if (!canLabel(game) || !game.pending.eligible.includes(index)) return;
+  const erased = new Set(game.pending.erased);
+  if (erased.has(index)) erased.delete(index);
+  else erased.add(index);
+  game.pending.erased = [...erased].sort((a, b) => a - b);
+  save();
+  render();
+}
+
+function setErasures(all) {
+  const game = active();
+  if (!canLabel(game)) return;
+  game.pending.erased = all ? game.pending.eligible.slice() : [];
+  save();
+  render();
+}
+
+function makeText(tag, className, content) {
+  const node = document.createElement(tag);
+  node.className = className;
+  node.textContent = content;
+  return node;
+}
+
+function drawBoard(container, board, options = {}) {
+  const { game, moves = [], pending, last, interactive = false } = options;
+  const used = new Set(moves.map(move => move.index));
+  const focusedIndex = container.contains(document.activeElement) ? document.activeElement.dataset.cell : null;
+  container.style.setProperty('--cols', Math.min(12, board.length));
+  const cells = board.map((sign, index) => {
+    const pickable = interactive && canPoint(game) && sign === 0;
+    const erasable = interactive && canLabel(game) && pending.eligible.includes(index);
+    const marked = erasable && pending.erased.includes(index);
+    const picked = pending?.index === index;
+    const reused = sign === 0 && used.has(index);
+    const cell = document.createElement(interactive ? 'button' : 'div');
+    if (interactive) {
+      cell.type = 'button';
+      cell.disabled = !(pickable || erasable);
+      cell.dataset.cell = index;
+      if (pickable) cell.addEventListener('click', () => point(index));
+      if (erasable) {
+        cell.setAttribute('aria-pressed', String(marked));
+        cell.addEventListener('click', () => toggleErase(index));
+      }
+    }
+    cell.className = ['cell', sign === 1 ? 'is-plus' : sign === -1 ? 'is-minus' : 'is-empty',
+      picked && 'is-picked', erasable && 'is-erasable', marked && 'will-erase',
+      reused && 'is-reused', pickable && 'is-playable', last === index && 'is-last'].filter(Boolean).join(' ');
+    const hint = picked ? t('picked') : marked ? t('willErase') : erasable ? t('willKeep') : reused ? t('reusable') : '';
+    const label = t('cellLabel', {
+      cell: index + 1,
+      status: sign ? t(sign === 1 ? 'plus' : 'minus') : t('empty'),
+      hint: hint ? `${settings.lang === 'en' ? ', ' : '，'}${hint}` : '',
+    });
+    cell.setAttribute('aria-label', label);
+    cell.append(makeText('span', 'cell-number', pad(index + 1)),
+      makeText('span', 'cell-sign', picked ? '▾' : sign ? glyph(sign) : '·'),
+      makeText('span', 'cell-hint', hint));
+    return cell;
+  });
+  container.replaceChildren(...cells);
+  if (focusedIndex != null && !cells[Number(focusedIndex)]?.disabled) {
+    cells[Number(focusedIndex)]?.focus({ preventScroll: true });
+  }
+}
+
+function render() {
+  const game = active();
+  const board = game?.board ?? Array(settings.size).fill(0);
+  const moves = game?.moves ?? [];
+  const limit = game?.limit ?? settings.limit;
+  const pending = game?.pending;
+  const pointing = canPoint(game);
+  const labeling = canLabel(game);
+  const thinking = cpuTurn(game);
+
+  document.querySelectorAll('[data-role]').forEach(button => {
+    button.setAttribute('aria-pressed', String(settings.role === button.dataset.role));
+  });
+  limitSelect.value = settings.limit;
+  renderOpeningScore();
+  element('setup-title').textContent = t(game ? 'newSetup' : 'setup');
+  element('start-match').textContent = t(isPlaying(game) ? 'newMatch' : 'start');
+  element('storage-note').hidden = storageAvailable;
+  element('storage-note').textContent = t('storageError');
+  element('round-stat').replaceChildren(document.createTextNode(pad(moves.length)), makeText('span', 'stat-total', ` / ${pad(limit)}`));
+  element('score-stat').textContent = pad(survivors(board));
+  element('reuse-stat').textContent = pad(moves.filter(move => move.reused).length);
+  element('sign-controls').hidden = !labeling;
+  element('erase-controls').hidden = !labeling || pending.eligible.length === 0;
+  element('finish-controls').hidden = !pointing;
+  drawBoard(boardEl, board, { game, moves, pending, last: moves.at(-1)?.index, interactive: true });
+
+  let status = t('waiting');
+  let message = t('chooseStart');
+  if (thinking) {
+    status = t('cpuTurn');
+    message = pending ? t('cpuLabeling', { cell: pending.index + 1 }) : t('cpuPointing');
+  } else if (pointing) {
+    status = t('yourPick');
+    message = t('pickEmpty');
+  } else if (labeling) {
+    status = t('yourLabel');
+    message = t(pending.eligible.length ? 'labelWithErase' : 'labelNoErase', { cell: pending.index + 1 });
+  } else if (game?.status === 'finished') {
+    status = t('done');
+    message = t('finishedMessage', { reason: reasonText(game.reason), count: survivors(board) });
+  }
+  element('lamp-status').textContent = status;
+  element('lamp-status').dataset.state = thinking ? 'cpu' : isPlaying(game) ? 'player' : 'idle';
+  element('console-message').textContent = message;
+  element('result-strip').hidden = !game;
+  if (game) {
+    element('result-strip').textContent = isPlaying(game)
+      ? t('currentRole', { role: roles[game.role] })
+      : t('finalScore', { count: survivors(board) });
+  }
+  renderRecords();
+}
+
+function matchLabel(game) {
+  const date = new Date(game.startedAt);
+  const time = new Intl.DateTimeFormat(document.documentElement.lang, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date);
+  const status = t(game.status);
+  return `${time} · ${roles[game.role]} · ${status}`;
+}
+
+function moveDescription(game, move) {
+  const pointer = t(game.role === 'pointer' ? 'you' : 'computer');
+  const labeler = t(game.role === 'labeler' ? 'you' : 'computer');
+  const separator = settings.lang === 'en' ? ', ' : '、';
+  const erased = move.erased.length ? move.erased.map(item => `${item.index + 1}${glyph(item.sign)}`).join(separator) : t('none');
+  return t('move', { pointer, labeler, cell: move.index + 1, sign: glyph(move.sign), erased, reused: move.reused ? t('reuseMark') : '' });
+}
+
+function renderRecords() {
+  const game = byId(displayedId) ?? games[0];
+  matchSelect.disabled = !game;
+  element('export-match').disabled = !game;
+  matchSelect.replaceChildren(...(games.length ? games.map(item => {
+    const option = makeText('option', '', matchLabel(item));
+    option.value = item.id;
+    return option;
+  }) : [makeText('option', '', t('noMatches'))]));
+  const log = element('turn-log');
+  log.replaceChildren();
+  if (!game) {
+    element('record-summary').textContent = t('noRecords');
+    return;
+  }
+  displayedId = matchSelect.value = game.id;
+  const suffix = game.pending ? ` · ${t('pending', { cell: game.pending.index + 1 })}` : '';
+  element('record-summary').textContent = t('summary', {
+    size: game.size, turns: game.moves.length, limit: game.limit, count: survivors(game.board),
+  }) + suffix;
+  if (!game.moves.length) {
+    log.append(makeText('li', 'log-empty', t('emptyLog')));
+    return;
+  }
+  [...game.moves.entries()].reverse().forEach(([index, move]) => {
+    const row = document.createElement('li');
+    row.className = 'log-item';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'log-button';
+    button.append(makeText('span', 'log-round', pad(index + 1)),
+      makeText('span', 'log-detail', moveDescription(game, move)), makeText('span', 'log-arrow', '↗'));
+    button.addEventListener('click', () => openReplay(game.id, index));
+    row.append(button);
+    log.append(row);
+  });
+}
+
+function openReplay(id, index) {
+  replayId = id;
+  replayIndex = index;
+  renderReplay();
+  if (!replayDialog.open) replayDialog.showModal();
+}
+
+function renderReplay() {
+  const game = byId(replayId);
+  if (!game?.moves[replayIndex]) return;
+  const move = game.moves[replayIndex];
+  element('replay-counter').textContent = t('replayCount', { turn: replayIndex + 1, total: game.moves.length });
+  element('replay-description').textContent = moveDescription(game, move);
+  element('previous-turn').disabled = replayIndex === 0;
+  element('next-turn').disabled = replayIndex === game.moves.length - 1;
+  drawBoard(element('replay-board'), move.after, { moves: game.moves.slice(0, replayIndex + 1), last: move.index });
+}
+
+function exportMatch() {
+  const game = byId(displayedId);
+  if (!game) return;
+  const file = new Blob([JSON.stringify({ ...game, retained: survivors(game.board) }, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(file);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `spr-${game.startedAt.slice(0, 10)}-${game.role}-${game.id.slice(0, 8)}.json`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 500);
+}
+
+function selectSetting(name, value) {
+  settings[name] = value;
+  if (name === 'lang') applyLanguage();
+  save();
+  render();
+}
+
+document.querySelectorAll('[data-role]').forEach(button => button.addEventListener('click', () => selectSetting('role', button.dataset.role)));
+document.querySelectorAll('[data-language]').forEach(button => {
+  button.addEventListener('click', () => selectSetting('lang', button.dataset.language));
+});
+sizeInput.value = settings.size;
+sizeInput.addEventListener('input', renderOpeningScore);
+sizeInput.addEventListener('change', () => {
+  if (validateSize()) selectSetting('size', sizeInput.valueAsNumber);
+});
+limitSelect.addEventListener('change', event => selectSetting('limit', Number(event.target.value)));
+element('settings-form').addEventListener('submit', startMatch);
+element('open-rules').addEventListener('click', () => rulesDialog.showModal());
+element('close-rules').addEventListener('click', () => rulesDialog.close());
+element('place-plus').addEventListener('click', () => { if (canLabel(active())) place(1, active().pending.erased); });
+element('place-minus').addEventListener('click', () => { if (canLabel(active())) place(-1, active().pending.erased); });
+element('erase-all').addEventListener('click', () => setErasures(true));
+element('erase-none').addEventListener('click', () => setErasures(false));
+element('end-match').addEventListener('click', () => { if (canPoint(active())) finish(active(), 'reasonYouStop'); });
+matchSelect.addEventListener('change', () => { displayedId = matchSelect.value; renderRecords(); });
+element('export-match').addEventListener('click', exportMatch);
+element('close-replay').addEventListener('click', () => replayDialog.close());
+element('previous-turn').addEventListener('click', () => { if (replayIndex > 0) { replayIndex--; renderReplay(); } });
+element('next-turn').addEventListener('click', () => { if (replayIndex + 1 < byId(replayId).moves.length) { replayIndex++; renderReplay(); } });
+for (const dialog of [rulesDialog, replayDialog]) {
+  dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
+}
+
+applyLanguage();
+render();
+queueCpu();
+  </script>
+</body>
+</html>
